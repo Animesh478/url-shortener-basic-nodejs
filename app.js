@@ -12,10 +12,12 @@ const serveFile = async function (res, filePath, contentType) {
   try {
     const data = await readFile(filePath);
     res.writeHead(200, { "Content-Type": contentType });
-    res.end(data);
+    return res.end(data);
   } catch (error) {
-    res.writeHead(404, { "Content-Type": "text/html" });
-    res.end("404 Page Not Found");
+    if (!res.headersSent) {
+      res.writeHead(404, { "Content-Type": "text/html" });
+      return res.end("404 Page Not Found");
+    }
   }
 };
 
@@ -43,6 +45,20 @@ const server = createServer(async (req, res) => {
       serveFile(res, path.join(__dirname, "public", "index.html"), "text/html");
     } else if (req.url === "/style.css") {
       serveFile(res, path.join(__dirname, "public", "style.css"), "text/css");
+    } else if (req.url === "/links") {
+      const links = await loadLinks();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(links));
+    } else {
+      const links = await loadLinks();
+      const shortCode = req.url.slice(1);
+      if (links[shortCode]) {
+        res.writeHead(302, { location: links[shortCode] });
+        return res.end();
+      }
+
+      res.writeHead(404, { "Content-Type": "plain/text" });
+      return res.end("Shortened URL not found");
     }
   }
 
